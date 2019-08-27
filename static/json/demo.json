@@ -1,0 +1,45 @@
+{
+  "contractNum": "999",
+  "borrowers":[
+    {
+      "name": "罗勇",
+      "idNum": "",
+      "phoneNum": "",
+      "contractEmail": "",
+      "contactAddr": ""
+    }
+  ],
+  "properties":[
+    {
+      "owner": "罗勇",
+      "location": "花都区",
+      "area": 120,
+      "value":1320000,
+      "loanAmount": 140000,
+      "licenseNum": "粤房",
+      "note": ""
+    }
+  ],
+  "spouses":[
+    {
+      "name": "李妍",
+      "idNum": ""
+    }
+  ],
+  "propertyCommonOwner":[
+
+  ],
+  "paymentDetails": {
+    "name": "罗勇",
+    "idNum": "",
+    "bankAcct": "",
+    "bankBranch": ""
+  },
+  "intention": "经营性贷款",
+  "interestRate": 5,
+  "loanLength": 12,
+  "loanTotalAmount": 140000,
+  "loanType": 0,
+  "loanStartDate": "7/3/2015 0:00",
+  "loanEndDate": ""
+}

@@ -1,0 +1,26 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="cn">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>合同套打</title>
+</head>
+<body>
+<h1>合同套打系统</h1>
+<h2>合同编号： </h2>
+<h3>请输入形如：123456 合同编号</h3>
+<label>
+    <input type="text"  style="width:300px" id="contractNum">
+</label>
+
+<a href="javascript:"  onclick="window.open('/print/' + document.getElementById('contractNum').value)">提交</a>
+
+<div>
+    <h3>公告栏</h3>
+    <p>{{.TimeNow}} 本系统作为Demo使用
+    </p>
+</div>
+
+</body>
+</html>

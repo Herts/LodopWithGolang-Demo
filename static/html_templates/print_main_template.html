@@ -1,0 +1,57 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="cn">
+
+<head>
+    <title>助业14号-{{.ContractTypeCN}}合同（第一版）{{.ContractBranchCN}}版{{.ContractVer}}套打模板</title>
+</head>
+<script language="javascript" src="/static/js/LodopFuncs.js" type="text/javascript"></script>
+<script language="javascript" src="/static/js/jquery-3.4.1.min.js" type="text/javascript"></script>
+<script language="javascript" src="/static/js/myUtils.js" type="text/javascript"></script>
+<script language="javascript" src="/static/js/demo.js" type="text/javascript"></script>
+<script language="javascript" type="text/javascript">
+    var data = {};
+    function getData() {
+        $.ajax({
+            type: 'post',
+            // Modify url here to change data source
+            url: '/static/json/demo.json',
+            async: false,
+            dataType: 'json',
+            success: function (result) {
+                data = result;
+            }
+        });
+    }
+    function GetDesign() {
+        getData();
+        if (jQuery.isEmptyObject(data)) {
+            alert("没有找到相应的合同");
+            return
+        }
+        CreatePrintPage(data);
+        LODOP.PRINT_DESIGN();
+    }
+    function GetPreview() {
+        getData();
+        if (jQuery.isEmptyObject(data)) {
+            alert("没有找到相应的合同");
+            return
+        }
+        CreatePrintPage(data);
+        LODOP.PREVIEW();
+    }
+</script>
+<body>
+<h1>抵押合同</h1>
+<h2>合同编号：{{.ContractNum}}</h2>
+<div id="notices"></div>
+进入<a href="javascript:" onclick="GetDesign()">模板设计</a>
+<br>
+<br>
+进入<a href="javascript:" onclick="GetPreview()">模板的打印预览</a>
+<br>
+<br>
+<a href="/print/">返回上级</a>
+</body>
+</html>
