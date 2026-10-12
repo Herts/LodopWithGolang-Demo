@@ -1,122 +1,102 @@
-import os
+"""Convert red document markers into LODOP coordinates or JSON."""
+
+import argparse
+import json
+from pathlib import Path
+import sys
 
 import cv2
 import numpy as np
 
-CONST_RED_LOWER = np.array([200, 0, 0])
-CONST_RED_UPPER = np.array([255, 20, 20])
-CONST_A4_LENGTH = 1123
-CONST_A4_WIDTH = 794
+SUPPORTED_IMAGES = {'.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp'}
 
 
-def print_codes_with_new_pages(filename):
-    sized_dots = find_xy_in_large_sized(filename)
-    count = 1
-    #
-    # Modify offset here
-    #
-    offset = -7
-    for dot in sorted(sized_dots):
-        print("LODOP.ADD_PRINT_TEXT({0}, {1}, 100, 20, \"{2}\");".format(dot[0] + offset, dot[1], count))
-        count += 1
-    print("LODOP.NEWPAGE();")
-
-
-def print_codes(filename, page_index):
-    sized_dots = find_xy_in_large_sized(filename)
-
-    blank_count = 1
-    # vertical_offset is configured -1 because
-    # the dot position is on the bottom of one line of text
-    vertical_offset = -7
-    for dot in sorted(sized_dots):
-        print("LODOP.ADD_PRINT_TEXT({0}, {1}, 100, 20, \"{2}\");".format(
-            dot[0] + vertical_offset + page_index * CONST_A4_LENGTH, dot[1], blank_count))
-        blank_count += 1
-
-
-def print_codes_with_blank_data(filename, page_index, blank_data):
-    sized_dots = find_xy_in_large_sized(filename)
-
-    blank_count = 1
-    # vertical_offset is configured -7 because
-    # the dot position is on the bottom of one line of text
-    vertical_offset = -7
-    for dot in sorted(sized_dots):
-        print("LODOP.ADD_PRINT_TEXT({0}, {1}, 100, 20, {2});".format(
-            dot[0] + vertical_offset + page_index * CONST_A4_LENGTH, dot[1], blank_data[blank_count - 1]))
-        blank_count += 1
-
-
-def find_xy_in_large_sized(filename):
-    img = cv2.imread(filename)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    mask = cv2.inRange(img, CONST_RED_LOWER, CONST_RED_UPPER)
-    dot_coordinates = np.where(mask != 0)
-    dot_coordinates = set(zip(dot_coordinates[0], dot_coordinates[1]))
-    dot_coordinates = sorted(dot_coordinates)
-    sized_dots = set()
-    for coors in dot_coordinates:
-        sized_dots.add((int(coors[0] * 794 / 4961), int(coors[1] * 794 / 4961)))
-    adjust_dots_in_one_line(sized_dots)
-    remove_duplicate_dots(sized_dots)
-    return sized_dots
-
-
-def remove_duplicate_dots(sized_dots):
-    sorted_sized_dots = sorted(sized_dots)
-    pre = (0, 0)
-    for dot in sorted_sized_dots:
-        # debug:
-        # print(dot, abs(dot[0] - pre[0]), abs(dot[1] - pre[1]))
-        if abs(dot[0] - pre[0]) <= 15 and abs(dot[1] - pre[1]) <= 15:
-            # debug:
-            # print("{0} is removed because of {1}".format(dot, pre))
-            # here sizedDots will be manipulated
-            sized_dots.remove(dot)
+def find_dots(image, width=794, height=1123, min_area=3):
+    """Return (top, left) centroids in page units, sorted in reading order."""
+    if image is None or image.ndim != 3 or image.shape[2] != 3:
+        raise ValueError('Expected a readable three-channel image')
+    if width <= 0 or height <= 0 or min_area < 1:
+        raise ValueError('Page dimensions and minimum marker area must be positive')
+    # OpenCV uses BGR. Retain the original red threshold, but group whole
+    # connected markers instead of guessing duplicates from individual pixels.
+    mask = cv2.inRange(image, np.array([0, 0, 200], dtype=np.uint8),
+                      np.array([20, 20, 255], dtype=np.uint8))
+    count, _, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    image_height, image_width = image.shape[:2]
+    dots = []
+    for index in range(1, count):
+        if stats[index, cv2.CC_STAT_AREA] < min_area:
             continue
-        pre = dot
-    # debug:
-    # print(sorted(sizedDots))
-    sorted_sized_dots = sorted(sized_dots, key=lambda k: [k[1], k[0]])
-
-    pre = (0, 0)
-    for dot in sorted_sized_dots:
-        # debug:
-        # print(dot, abs(dot[0] - pre[0]), abs(dot[1] - pre[1]))
-        if abs(dot[0] - pre[0]) <= 15 and abs(dot[1] - pre[1]) <= 15:
-            # debug:
-            # print("{0} is removed because of {1}".format(dot, pre))
-            # here sizedDots will be manipulated
-            sized_dots.remove(dot)
-            continue
-        pre = dot
+        x, y = centroids[index]
+        dots.append((round(float(y) * height / image_height),
+                     round(float(x) * width / image_width)))
+    return sorted(dots)
 
 
-def adjust_dots_in_one_line(sized_dots):
-    sorted_sized_dots = sorted(sized_dots)
-    pre = (0, 0)
-    for dot in sorted_sized_dots:
-        if dot[0] - pre[0] <= 2:
-            # debug:
-            # print("{0} is adjusted because of {1}".format(dot, pre))
-            # here sizedDots will be manipulated
-            sized_dots.remove(dot)
-            new_dot = (pre[0], dot[1])
-            sized_dots.add(new_dot)
-            pre = new_dot
-            continue
-        pre = dot
+def collect_images(inputs):
+    """Preserve explicit input order; sort images within each directory."""
+    images = []
+    for item in inputs:
+        path = Path(item)
+        if path.is_dir():
+            found = sorted(p for p in path.iterdir()
+                           if p.is_file() and p.suffix.lower() in SUPPORTED_IMAGES)
+            if not found:
+                raise ValueError(f'No supported images in {path}')
+            images.extend(found)
+        elif path.is_file():
+            images.append(path)
+        else:
+            raise ValueError(f'Input does not exist: {path}')
+    return images
 
-# Edit Code Here
-picsDirectory = "resource/pics/"
-filenames = os.walk(picsDirectory).__next__()[2]
 
-# page_count default: 1
-page_count = 1
-for filename in filenames:
-    # print(filename)
-    print("// Page: ", page_count)
-    # print_codes(picsDirectory + filename, page_count - 1)
-    print_codes(picsDirectory + filename, page_count - 1)
-    page_count += 1
+def render_js(pages):
+    lines = []
+    for index, page in enumerate(pages):
+        if index:
+            lines.append('LODOP.NEWPAGE();')
+        lines.append(f'// Page: {index + 1}')
+        for number, (top, left) in enumerate(page['dots'], start=1):
+            lines.append(f'LODOP.ADD_PRINT_TEXT({top}, {left}, 100, 20, "{number}");')
+    return '\n'.join(lines) + '\n'
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('images', nargs='+', help='Image files or directories of page images')
+    parser.add_argument('--width', type=int, default=794, help='Page width in LODOP units (default: 794)')
+    parser.add_argument('--height', type=int, default=1123, help='Page height in LODOP units (default: 1123)')
+    parser.add_argument('--offset-y', type=int, default=-7, help='Vertical calibration offset (default: -7)')
+    parser.add_argument('--offset-x', type=int, default=0, help='Horizontal calibration offset (default: 0)')
+    parser.add_argument('--min-area', type=int, default=3, help='Minimum red marker area in source pixels')
+    parser.add_argument('--format', choices=['js', 'json'], default='js')
+    parser.add_argument('--output', type=Path, help='Write to a file instead of standard output')
+    args = parser.parse_args(argv)
+    try:
+        if args.width <= 0 or args.height <= 0 or args.min_area < 1:
+            raise ValueError('Page dimensions and minimum marker area must be positive')
+        pages = []
+        for path in collect_images(args.images):
+            image = cv2.imread(str(path))
+            if image is None:
+                raise ValueError(f'Unable to read image: {path}')
+            dots = find_dots(image, args.width, args.height, args.min_area)
+            if not dots:
+                raise ValueError(f'No red markers detected in {path}; use solid RGB(255, 0, 0) dots')
+            pages.append({
+                'image': str(path), 'width': args.width, 'height': args.height,
+                'dots': [[top + args.offset_y, left + args.offset_x] for top, left in dots],
+            })
+        output = json.dumps(pages, indent=2, ensure_ascii=False) + '\n' if args.format == 'json' else render_js(pages)
+        if args.output:
+            args.output.write_text(output, encoding='utf-8')
+        else:
+            sys.stdout.write(output)
+    except (ValueError, OSError, cv2.error) as error:
+        parser.error(str(error))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

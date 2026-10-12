@@ -1,26 +1,26 @@
-
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-        "http://www.w3.org/TR/html4/loose.dtd">
-<html lang="cn">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>合同套打</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>合同套打 / Contract printing demo</title>
 </head>
 <body>
-<h1>合同套打系统</h1>
-<h2>合同编号： </h2>
-<h3>请输入形如：123456 合同编号</h3>
-<label>
-    <input type="text"  style="width:300px" id="contractNum">
-</label>
-
-<a href="javascript:"  onclick="window.open('/print/' + document.getElementById('contractNum').value)">提交</a>
-
-<div>
-    <h3>公告栏</h3>
-    <p>{{.TimeNow}} 本系统作为Demo使用
-    </p>
-</div>
-
+<h1>合同套打 / Contract printing demo</h1>
+<p>输入合同编号，预览示例数据。此演示不查询真实合同。</p>
+<p>Enter a contract number to preview sample data. This demo does not retrieve real contracts.</p>
+<form id="contractForm">
+    <label for="contractNum">合同编号 / Contract number</label>
+    <input type="text" id="contractNum" required maxlength="100" value="999">
+    <button type="submit">打开示例 / Open demo</button>
+</form>
+<p>{{.TimeNow}} — Demo</p>
+<script>
+    document.getElementById('contractForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var number = document.getElementById('contractNum').value.trim();
+        if (number) window.location.href = '/print/' + encodeURIComponent(number);
+    });
+</script>
 </body>
 </html>
